@@ -10,7 +10,7 @@ The resulting set of neighbourhoods are essentially a massive joint probability 
 
 These files are then put in an SQL database to be retrieved as needed during simulations. Ironically, populous cells have LN neighbourhoods which are smaller (due to rank cut-off) yet are queried more frequently. Therefore cells with a small neighbourhood are stored in memory during simulations to save overhead in retrieving the same data many times.
 
-Some guidance on using a C++/SQL connector can be found here http://blog.trilabs.co.tz/2011/09/connect-to-mysql-using-c-on-ubuntu.html
+Some guidance on using a C++/SQL connector can be found [here](http://blog.trilabs.co.tz/2011/09/connect-to-mysql-using-c-on-ubuntu.html) 
 
 # Usage
 
