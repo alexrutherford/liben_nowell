@@ -1,12 +1,14 @@
-////////////////////////
-// Alex Rutherford
+//////////////////////////////
+// Reads list of population grid data
+// and calcualtes LN neighbourhood for
+// each.
+// A. Rutherford after S. D'souza
 // Masdar Institute
-// 2011
-// Calculates Liben-Nowell neighbourhood (indices and weights)
-// from list of populations of cells.
-// Extremely large calculation, ported to cluster
-// Embarrasingly parallel, amenable to parallelisation
-/////////////////////////
+// 11/11
+// Invoke e.g.
+// ./a.out ALL_CLEANED -b 0 -e 1 -o TEST.OUT
+// -b/-e specify numerical range of cells to consider
+// -o is output file
 
 #include <fstream>
 #include <vector>
@@ -19,32 +21,58 @@
 #include <time.h>
 
 #include "parameters.h"
+#include "utils.h"
 using namespace std;
 
-int size=7525135;
-// Number of 1km^2 cells in mainland USA
+//int size=7525135;
+//int size=5062950;
+
+FILE* outFile;
+char outFileName[20];
+
+int testRangeBegin=0;
+int testRangeEnd=0;
 
 ///////////
-double distanceOnEarth(double lat1,double lat2,double long1,double long2)
+void parseArgs(int argc, char** argv, char* outFileName)
 ///////////
 	{
+		int argCount=0;
+					
+		printf("INPUT FILE - %s\n",argv[1]);					
+		fflush(stdout);
+		// Input file is always first arg
 
-		if ((lat1==lat2)&&(long1==long2))
+		for(argCount=0;argCount<argc;argCount++)
 			{
-				return 0.0;
+				
+				if(strcmp(argv[argCount],"-b")==0)
+				{
+					testRangeBegin=atoi(argv[argCount+1]);
+					argCount++;
+					printf("BEGINNING CELL NUMBER - %d\n",testRangeBegin);					
+					fflush(stdout);
+				}
+
+				if(strcmp(argv[argCount],"-e")==0)
+				{
+					testRangeEnd=atoi(argv[argCount+1]);
+					argCount++;
+					printf("END CELL NUMBER - %d\n",testRangeEnd);
+					fflush(stdout);
+				}
+				
+				if(strcmp(argv[argCount],"-o")==0)
+				{
+					printf("GOT ARG %s\n",argv[argCount+1]);
+					strcpy(outFileName,argv[argCount+1]);
+					printf("COPY FINISHED");
+					fflush(stdout);
+					printf("OUTPUT FILE IS - %s\n",argv[argCount+1]);
+					fflush(stdout);	
+					argCount++;	
+				}
 			}
-
-		double temp=0.0;
-
-		long1=(90.0-long1)*radConversion;
-		long2=(90.0-long2)*radConversion;
-		
-		lat1=lat1*radConversion;
-		lat2=lat2*radConversion;
-	
-		temp=sin(long1)*sin(long2)*cos(lat1-lat2)+cos(long1)*cos(long2);
-
-		return acos(temp)*earthRadius;	
 
 	}
 
@@ -78,29 +106,6 @@ bool compareDistances(popIDElement a, popIDElement b)
 				return false;
 			}
 	}
-
-///////////
-struct lnEntry
-///////////
-	{
-		vector<int> id;
-		vector<double>rank;
-	};
-
-
-//////////////////////////////////
-void printTime()
-//////////////////////////////////
-	{
-		time_t rawtime;
-		struct tm * timeinfo;
-
-		time(&rawtime);
-		timeinfo=localtime(&rawtime);
-					
-		printf("%s\n",asctime(timeinfo));
-	}
-
 
 //////////////////////////////////
 void getLNList(lnEntry *lnList,int *population,double *xCoord,double *yCoord)
@@ -143,6 +148,14 @@ void getLNList(lnEntry *lnList,int *population,double *xCoord,double *yCoord)
 					
 				tempList.sort(compareDistances);
 				// Get sorted list of distances
+/*				
+				/////////////
+				for (int k=0;k<10;k++)
+					{
+						printf("\t\t%d - %f %d %d\n",k,(tempList.front()).dist,(tempList.front()).ID,(tempList.front()).pop);
+						tempList.pop_front();
+					}
+*/
 				/////////////				
 				list<popIDElement> ::iterator it;
 				for(it=tempList.begin();it!=tempList.end();it++)
@@ -180,13 +193,19 @@ void getLNList(lnEntry *lnList,int *population,double *xCoord,double *yCoord)
 //						printf("\t=>%f\n",tempCumSum);
 						(lnList[i].rank)[k]=tempCumSum;
 						// Take cumulative sum of scaled inverse ranks
-						(lnList[i].id).push_back((tempList.front().ID));
+						(lnList[i].ids).push_back((tempList.front().ID));
 						// Add ID of cell to lnList of cell IDs
 						tempList.pop_front();
 					}
 				// 
 					
 				printf("\tCELL %d HAS %d ENTRIES\n",i,(lnList[i].rank).size());
+/*
+				for(int k=0;k<(lnList[i].rank).size();k++)
+					{
+							printf("\t ID %d - RANK %f\n",(lnList[i].id)[k],(lnList[i].rank)[k]);
+					}
+*/			
 				tempList.clear();
 				tempRanks.clear();
 				}
@@ -196,12 +215,14 @@ void getLNList(lnEntry *lnList,int *population,double *xCoord,double *yCoord)
 	}
 
 //////////////////////////////////
-int main(int agrc, char **argv)
+int main(int argc, char **argv)
 //////////////////////////////////
 	{
 
 		testRangeEnd=7000;
 		testRangeBegin=3840;
+	
+		parseArgs(argc,argv,outFileName);
 
 		printf("EXECUTING FOR RANGE - %d ->%d\n",testRangeBegin,testRangeEnd);
 
@@ -219,6 +240,9 @@ int main(int agrc, char **argv)
 		fflush(stdout);
 
 		FILE *inFile=fopen(argv[1],"r");
+		// inFile is always first argument
+
+		FILE *outFile;
 
 		printf("OPENED FILE\n");
 		fflush(stdout);
@@ -227,7 +251,7 @@ int main(int agrc, char **argv)
 
 		char *tempRecord;
 		tempRecord=new char[50];
-        // Infile schema is <lat>,<long>,<population>
+
 		for (int i=0;i<size;i++)
 			{
 			
@@ -251,13 +275,33 @@ int main(int agrc, char **argv)
 		
 		getLNList(lnList,population,xCoord,yCoord);
 		
+/*
+		for(int i=0;i<20000000;i++)
+			{
+				actionQueue.push((float)i);
 
-		printf("LN LIST COMPLETED FOR %d-%d\nWRITING TO FILE\n",testRangeBegin,testRangeEnd);
+				if(i%10000==0)
+					{
+						printf("ALLOCATED %d...\n",i);
+						fflush(stdout);
+						actionQueue.pop();
+					}
+			}
+
+		printf("AT TOP %f\n",actionQueue.top());
 		fflush(stdout);
-		
-		FILE *outFile;
-		outFile=fopen("LN_FILE.txt","w");
+*/
+		printf("LN LIST COMPLETED FOR %d-%d\nWRITING TO FILE - %s\n",testRangeBegin,testRangeEnd,outFileName);
+		fflush(stdout);
+	
+		outFile=fopen(outFileName,"w");
 
+		if(outFile==NULL)
+		{
+			printf("ERROR WITH OUT FILE\n");
+			fflush(stdout);
+		}
+	
 		for(int k=testRangeBegin;k<testRangeEnd;k++)
 			{
 	
@@ -265,7 +309,7 @@ int main(int agrc, char **argv)
 				
 				for (int l=0;l<(lnList[k].rank).size();l++)
 					{						
-							fprintf(outFile,"%d\t",(lnList[k].id)[l]);
+							fprintf(outFile,"%d\t",(lnList[k].ids)[l]);
 					}
 
 					fprintf(outFile,"\n");
@@ -290,3 +334,4 @@ int main(int agrc, char **argv)
 		return 0;
 
 	}
+
