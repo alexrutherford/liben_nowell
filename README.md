@@ -8,6 +8,8 @@ Second set of scripts (```put_file_in_db_2.cc``` and ```put_files_in_db.py```) l
 
 The resulting set of neighbourhoods are essentially a massive joint probability distribution of the form 'P_ij is the probability of the friend of a recruit in cell i being in cell j'. The probability of friendship is rank based, meaning it is based on the population *lying closer to i than j*. Therefore the cumulative population centered on each cell must be calculated, although a cut-off of 1000km and 100,000 people is applied (as per Liben-Nowell et all). Much of the computational complexity arises from the fact that the data, although equally spaced, cannot easily be assigned coordinates on a grid due to projection issues. Therefore all other cells must be considered.
 
+Population input file is of form ```<lat>\t<long>\t<population>``` for all cells. Split into 2 to overcome GitHub file size limitation (100MB). Combine with ```cat POPULATION_1.csv POPULATION_2.csv > POPULATION_ALL.csv```
+
 These files are then put in an SQL database to be retrieved as needed during simulations. Ironically, populous cells have LN neighbourhoods which are smaller (due to rank cut-off) yet are queried more frequently. Therefore cells with a small neighbourhood are stored in memory during simulations to save overhead in retrieving the same data many times.
 
 Some guidance on using a C++/SQL connector can be found [here](http://blog.trilabs.co.tz/2011/09/connect-to-mysql-using-c-on-ubuntu.html) 
